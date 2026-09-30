@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Estudos para Concursos</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- PDF.js carregado via CDN (funciona direto no GitHub Pages) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header><h1>📚 Estudos para Concursos</h1></header>
+  <div class="layout">
+    <aside>
+      <h3>➕ Nova matéria</h3>
+      <form id="formMateria">
+        <input id="novaMateria" placeholder="Ex.: Direito Constitucional" required>
+        <button>Criar</button>
+      </form>
+      <h3>Matérias</h3>
+      <div id="listaMaterias"></div>
+    </aside>
+    <main id="main"></main>
+  </div>
+</body>
+</html>
