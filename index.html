@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estudos para Concursos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--txt:#1d2433;--mut:#6b7488;--pri:#3b5bdb;--ok:#2f9e44;--err:#e03131;--bd:#dde2ec}
+@media(prefers-color-scheme:dark){:root{--bg:#12151c;--card:#1b202b;--txt:#e8ecf4;--mut:#9aa3b5;--bd:#2c3342}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--txt)}
+header{padding:14px 20px;background:var(--pri);color:#fff}
+h1{margin:0;font-size:1.3rem}
+.layout{display:flex;flex-wrap:wrap;gap:16px;padding:16px;max-width:1100px;margin:auto}
+aside{flex:1 1 220px;max-width:280px}
+main{flex:3 1 380px;min-width:0}
+input,button{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--txt)}
+input[type=text],#novaMateria{width:100%;margin-bottom:6px}
+button{cursor:pointer}
+button.pri{background:var(--pri);color:#fff;border:0;font-weight:600}
+form button{width:100%}
+.mat{display:flex;gap:4px;margin-bottom:6px}
+.mat .nome{flex:1;text-align:left}
+.mat .nome.on,.tab.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:12px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.alt{display:block;padding:7px 8px;border-radius:8px;cursor:pointer}
+.alt:hover{background:var(--bg)}
+.q.ok{border-left:5px solid var(--ok)}
+.q.err{border-left:5px solid var(--err)}
+.q.branco{border-left:5px solid #f08c00}
+.fb{margin:8px 0 0;font-weight:600}
+.ok .fb{color:var(--ok)}.err .fb{color:var(--err)}
+.muted{color:var(--mut);font-size:.9rem}
+.stats{display:flex;flex-wrap:wrap;gap:12px;text-align:center}
+.stats div{flex:1 1 90px}.stats b{display:block;font-size:1.6rem}
+.bar{height:10px;background:var(--bd);border-radius:6px;overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;background:var(--ok)}
+
+/* ---- v2: filtros, relatório e gráficos ---- */
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.chip{padding:5px 10px;border-radius:999px;font-size:.9rem}
+.chip.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+#de,#ate{width:75px}
+.mini{float:right;padding:3px 8px;font-size:.8rem}
+.q.pend{border-left:5px solid #f08c00}
+button.pri:disabled{opacity:.5;cursor:not-allowed}
+.bar{display:flex}.bar i{display:block;height:100%}
+.bar.big{height:16px}
+.bar .s-acerto,.dot.s-acerto{background:var(--ok)}
+.bar .s-erro,.dot.s-erro{background:var(--err)}
+.bar .s-pendente,.dot.s-pendente{background:#f08c00}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 4px 0 10px}
+.brow{display:grid;grid-template-columns:60px 1fr 45px;gap:8px;align-items:center;margin:4px 0;font-size:.85rem}
+.brow .bar{margin:0}
+summary{cursor:pointer}
+#refazer{margin-top:10px}
+aside .btn{display:block;text-align:center;margin-top:6px;cursor:pointer}
+aside .btn{padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--card)}
+/* ---- v3: abas, lista de PDFs, login ---- */
+[hidden]{display:none!important}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+#conta{display:flex;gap:10px;align-items:center;font-size:.9rem}
+.wrap{max-width:920px;margin:auto;padding:16px}
+.center{text-align:center;max-width:420px;margin:40px auto}
+#abas{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;border-bottom:2px solid var(--bd)}
+#abas .tab{white-space:nowrap;border-radius:10px 10px 0 0}
+#abas .tab.add{border-style:dashed}
+.row-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.row-head h2{margin:0}
+.pdfrow{display:flex;gap:10px;align-items:center;padding:9px 10px;border-bottom:1px solid var(--bd);cursor:pointer}
+.pdfrow:hover{background:var(--bg)}
+.pdfrow.on{background:var(--bg);border-left:4px solid var(--pri)}
+.pdfrow .nm{flex:1;font-weight:600;min-width:0;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<header><h1>📚 Estudos para Concursos</h1>
+  <div id="conta" hidden><span id="usuario"></span><button id="sair">Sair</button></div></header>
+<section id="login" class="card center"><h2>Entre para sincronizar seus estudos</h2>
+  <p class="muted">Seus dados ficam salvos na nuvem e acessíveis em qualquer aparelho.</p>
+  <button id="entrar" class="pri">Entrar com Google</button></section>
+<div id="app" class="wrap" hidden><nav id="abas"></nav><div id="painel"></div></div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, addDoc, updateDoc, deleteDoc, deleteField, writeBatch, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA9k7aqcBb2dVMVMA6zp0PAN6rLvADReaI",
+  authDomain: "questoes-b0c0b.firebaseapp.com",
+  projectId: "questoes-b0c0b",
+  storageBucket: "questoes-b0c0b.firebasestorage.app",
+  messagingSenderId: "194950212696",
+  appId: "1:194950212696:web:b4b59dbf93460088056e2d",
+  measurementId: "G-8H53FTS93Y"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+// Cache offline: continua funcionando sem internet e sincroniza depois
+const fs = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// ---------- Estado ----------
+let user = null, materias = [], listas = [], unsubs = [];
+const ui0 = JSON.parse(localStorage.getItem("ui_estudos") || "{}"); // preferências de tela (por aparelho)
+let sel = { materia: ui0.materia || null, lista: ui0.lista || null };
+let filtro = ui0.filtro || "todas";
+let faixa = ui0.faixa || { de: 1, ate: 9999 };
+const saveUi = () => localStorage.setItem("ui_estudos", JSON.stringify({ ...sel, filtro, faixa }));
+const col = (n) => collection(fs, "users", user.uid, n);
+const ref = (n, id) => doc(fs, "users", user.uid, n, id);
+const falha = (err) => { console.error(err); alert("Erro ao salvar na nuvem: " + err.message); };
+// Ordem alfabética natural (Aula 2 antes de Aula 10, ignora acentos/maiúsculas)
+const alfa = (a, b) => a.nome.localeCompare(b.nome, "pt-BR", { numeric: true, sensitivity: "base" });
+const listaAtual = () => listas.find((l) => l.id === sel.lista);
+let exibidas = []; // números das questões que estão na tela agora
+const pendentesTela = (L) => L.questoes.filter((q) => exibidas.includes(q.num) && status(L, q) === "pendente");
+// Atualiza o botão inferior em tempo real (contador e habilitação)
+function atualizarBotao(L) {
+  const b = $("corrigir"); if (!b) return;
+  const n = pendentesTela(L).length;
+  b.textContent = `✅ Corrigir questões marcadas (${n})`;
+  b.disabled = !(n && Object.keys(L.gabarito).length);
+}
+const sig = (ls) => ls.map((L) => [L.id, L.nome, L.materia, L.questoes.length,
+  Object.entries(L.respostas || {}).sort().join(), Object.keys(L.corrigidas || {}).sort().join()].join("~")).join("|");
+
+// ---------- Leitura de PDF / questões / relatório (reaproveitados) ----------
+// ---------- Extração do PDF ----------
+const LIXO = /(www\.estrategia|estrat[eé]gia concursos|p[aá]gina\s+\d+|^\s*\d+\s*(de|\/)\s*\d+\s*$|documento licenciado|^\s*prof\.)/i;
+// Gabarito: "1. C", "2 - A", "3: Certo", "4) ANULADA"...
+const PAD_GAB = /(?<!\d)(\d{1,3})\s*[.\-–:)]?\s*(ANULAD[AO]|CERTO|ERRADO|[A-E])(?![A-Za-zÀ-ú])/g;
+
+async function extrairTexto(file) {
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const paginas = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const tc = await (await pdf.getPage(p)).getTextContent();
+    const linhas = [];
+    let linha = "", y = null;
+    for (const it of tc.items) {
+      const yy = it.transform[5];
+      if (y !== null && Math.abs(yy - y) > 3) { linhas.push(linha); linha = ""; } // nova linha
+      linha += it.str;
+      y = yy;
+    }
+    linhas.push(linha);
+    paginas.push(linhas.filter((l) => !LIXO.test(l)).join("\n"));
+  }
+  return paginas.join("\n");
+}
+
+const norm = (r) => {
+  r = r.toUpperCase();
+  return r === "CERTO" ? "C" : r === "ERRADO" ? "E" : r.startsWith("ANULAD") ? "ANULADA" : r;
+};
+
+function lerGabarito(t) {
+  const g = {};
+  for (const m of t.replace(/\s+/g, " ").matchAll(PAD_GAB)) {
+    const n = +m[1];
+    if (!(n in g)) g[n] = norm(m[2]);
+  }
+  return g;
+}
+
+// Testa cada "GABARITO" e escolhe a ocorrência com maior sequência 1,2,3...
+function extrairGabarito(texto) {
+  let best = { g: {}, pos: texto.length }, bestRun = 0;
+  for (const m of texto.matchAll(/gabarito/gi)) {
+    const g = lerGabarito(texto.slice(m.index + m[0].length));
+    let r = 0;
+    while (r + 1 in g) r++;
+    if (r > bestRun) { bestRun = r; best = { g, pos: m.index }; }
+  }
+  return best;
+}
+
+// Divide por "1.", "2.", ... aceitando só o número esperado na sequência
+function dividirQuestoes(texto) {
+  let ach = [], esp = 1;
+  for (const m of texto.matchAll(/^[ \t]*(\d{1,3})[ \t]*[.)][ \t]+(?=\S)/gm)) {
+    const n = +m[1];
+    if (n === 1 && ach.length < 3) { ach = []; esp = 1; } // ignora sumário
+    if (n === esp) { ach.push({ n, ini: m.index, fim: m.index + m[0].length }); esp++; }
+  }
+  return ach.map((a, i) => ({ n: a.n, bloco: texto.slice(a.fim, i + 1 < ach.length ? ach[i + 1].ini : texto.length) }));
+}
+
+// Separa enunciado e alternativas a) b) c) d) e); sem alternativas => Certo/Errado
+function parsearQuestao(num, bloco) {
+  bloco = bloco.trim().replace(/\s*\n\s*/g, " ");
+  const marcas = [...bloco.matchAll(/(?:^|\s)\(?([a-eA-E])\)\s/g)]
+    .map((m) => ({ l: m[1].toLowerCase(), ini: m.index, fim: m.index + m[0].length }));
+  let seq = [];
+  for (let i = marcas.length - 1; i >= 0; i--) {
+    if (marcas[i].l !== "a") continue;
+    const t = [marcas[i]];
+    let esp = "b";
+    for (const mk of marcas.slice(i + 1))
+      if (mk.l === esp) { t.push(mk); esp = String.fromCharCode(esp.charCodeAt(0) + 1); }
+    if (t.length >= 2) { seq = t; break; }
+  }
+  if (seq.length) {
+    const alt = {};
+    seq.forEach((s, k) => (alt[s.l.toUpperCase()] = bloco.slice(s.fim, k + 1 < seq.length ? seq[k + 1].ini : bloco.length).trim()));
+    return { num, tipo: "ME", enunciado: bloco.slice(0, seq[0].ini).trim(), alternativas: alt };
+  }
+  return { num, tipo: "CE", enunciado: bloco, alternativas: { C: "Certo", E: "Errado" } };
+}
+
+async function processarPDF(file) {
+  const texto = await extrairTexto(file);
+  const { g, pos } = extrairGabarito(texto);
+  const questoes = dividirQuestoes(texto.slice(0, pos)).map((q) => parsearQuestao(q.n, q.bloco));
+  return { id: Date.now() + Math.random().toString(36).slice(2, 6), nome: file.name.replace(/\.pdf$/i, ""), questoes, gabarito: g, respostas: {}, corrigidas: {} };
+}
+
+// ---------- Interface ----------
+const TAM = 20; // tamanho dos blocos (chips e gráfico por bloco)
+const FILTROS = [["todas", "Todas"], ["nao", "Não resolvidas"], ["res", "Resolvidas"], ["erro", "Erradas"]];
+
+// Estado: branco | pendente (marcada, ainda não corrigida) | acerto | erro | anulada
+function status(L, q) {
+  const m = L.respostas[q.num], c = L.gabarito[q.num];
+  if (!m) return "branco";
+  if (!L.corrigidas[q.num]) return "pendente";
+  if (!c || c === "ANULADA") return "anulada";
+  return m === c ? "acerto" : "erro";
+}
+
+// Questões exibidas conforme bloco (de/até) e filtro
+function visiveis(L) {
+  return L.questoes.filter((q) => {
+    if (q.num < faixa.de || q.num > faixa.ate) return false;
+    const s = status(L, q);
+    return filtro === "todas" || (filtro === "nao" && s === "branco") ||
+      (filtro === "res" && s !== "branco") || (filtro === "erro" && s === "erro");
+  });
+}
+
+const seg = (c, t) => ["acerto", "erro", "pendente"].map((k) => `<i class="s-${k}" style="width:${(c[k] / t) * 100}%"></i>`).join("");
+const contar = (L, qs) => { const c = { acerto: 0, erro: 0, pendente: 0, branco: 0, anulada: 0 }; qs.forEach((q) => c[status(L, q)]++); return c; };
+
+// Relatório de desempenho (atualiza em tempo real)
+function relatorio(L) {
+  const total = L.questoes.length, c = contar(L, L.questoes);
+  const corr = c.acerto + c.erro, pct = corr ? (c.acerto / corr) * 100 : 0;
+  const pctTotal = (c.acerto / (total - c.anulada || 1)) * 100;
+  let blocos = "";
+  for (let s = 1; s <= L.questoes[total - 1].num; s += TAM) {
+    const qs = L.questoes.filter((q) => q.num >= s && q.num < s + TAM);
+    if (!qs.length) continue;
+    const b = contar(L, qs), bc = b.acerto + b.erro;
+    blocos += `<div class="brow"><span>${s}–${qs[qs.length - 1].num}</span><div class="bar">${seg(b, qs.length)}</div>
+      <span>${bc ? Math.round((b.acerto / bc) * 100) + "%" : "—"}</span></div>`;
+  }
+  return `<details class="card" open><summary><b>📊 Relatório de desempenho</b></summary>
+    <div class="stats"><div><b>${total}</b>Questões</div><div><b>${total - c.branco}</b>Respondidas</div>
+    <div><b>${c.branco}</b>Em branco</div><div><b>${c.acerto}</b>Acertos</div><div><b>${c.erro}</b>Erros</div>
+    <div><b>${pct.toFixed(1)}%</b>Aproveitamento</div></div>
+    <p class="muted">Aproveitamento = acertos ÷ questões corrigidas (${corr}). Sobre o total da lista: ${pctTotal.toFixed(1)}%.
+    ${c.pendente ? `${c.pendente} marcada(s) aguardando correção.` : ""}</p>
+    <div class="bar big">${seg(c, total)}</div>
+    <p class="muted"><i class="dot s-acerto"></i>Acertos <i class="dot s-erro"></i>Erros <i class="dot s-pendente"></i>Marcadas (não corrigidas) · cinza = em branco</p>
+    <h4>Por bloco de ${TAM} (% de acerto entre as corrigidas)</h4>${blocos}
+    <button id="refazer">🔄 Refazer lista inteira</button></details>`;
+}
+
+function renderLista(L) {
+  const total = L.questoes.length;
+  if (!total) return '<p class="card">Não consegui identificar questões neste PDF (talvez seja escaneado).</p>';
+  const temGab = Object.keys(L.gabarito).length > 0, maxN = L.questoes[total - 1].num;
+  const vis = visiveis(L); exibidas = vis.map((q) => q.num); const pend = pendentesTela(L).length;
+
+  let h = temGab ? "" : '<p class="card">⚠️ Gabarito não encontrado no final do PDF — a correção não será possível.</p>';
+  h += `<div id="rel">${relatorio(L)}</div>`;
+
+  // Filtros + blocos
+  let chips = `<button class="chip ${faixa.de <= 1 && faixa.ate >= maxN ? "on" : ""}" data-de="1" data-ate="9999">Todos</button>`;
+  for (let s = 1; s <= maxN; s += TAM) {
+    const e = Math.min(s + TAM - 1, maxN);
+    chips += `<button class="chip ${faixa.de === s && faixa.ate === e ? "on" : ""}" data-de="${s}" data-ate="${e}">${s}–${e}</button>`;
+  }
+  h += `<div class="card"><div class="chips">${FILTROS.map(([k, t]) => `<button class="chip ${filtro === k ? "on" : ""}" data-f="${k}">${t}</button>`).join("")}</div>
+    <div class="chips"><span class="muted">Blocos:</span>${chips}</div>
+    <div>Da questão <input type="number" id="de" min="1" max="${maxN}" value="${faixa.de}"> até
+    <input type="number" id="ate" min="1" max="${maxN}" value="${Math.min(faixa.ate, maxN)}"></div>
+    <p class="muted">Exibindo ${vis.length} de ${total} questões</p></div>`;
+
+  h += vis.map((q) => {
+    const s = status(L, q), marc = L.respostas[q.num], certa = L.gabarito[q.num];
+    const corr = ["acerto", "erro", "anulada"].includes(s);
+    const fb = !corr ? "" : s === "acerto" ? `✅ Acertou! Gabarito: ${certa}` :
+      s === "erro" ? `❌ Errou. Você marcou ${marc} — gabarito: ${certa}` : "Questão anulada / sem gabarito.";
+    const alts = Object.entries(q.alternativas).map(([k, t]) =>
+      `<label class="alt"><input type="radio" name="q${q.num}" value="${k}" data-q="${q.num}"
+       ${marc === k ? "checked" : ""} ${corr ? "disabled" : ""}> ${q.tipo === "CE" ? t : `<b>${k})</b> ${esc(t)}`}</label>`).join("");
+    return `<div class="card q ${{ acerto: "ok", erro: "err", pendente: "pend" }[s] || ""}"><b>Questão ${q.num}</b>
+      ${corr ? `<button class="mini" data-rq="${q.num}">↺ refazer</button>` : ""}<p>${esc(q.enunciado)}</p>${alts}
+      ${fb ? `<p class="fb">${fb}</p>` : ""}</div>`;
+  }).join("") || '<p class="muted">Nenhuma questão para este filtro/bloco.</p>';
+
+  return h + `<button id="corrigir" class="pri" ${temGab && pend ? "" : "disabled"}>✅ Corrigir questões marcadas (${pend})</button>`;
+}
+
+
+// ---------- Interface: abas de matérias + PDFs em linha ----------
+function render() {
+  const y = scrollY;
+  materias.sort(alfa);
+  if (!materias.some((m) => m.id === sel.materia)) sel.materia = materias[0]?.id || null;
+  $("abas").innerHTML = materias.map((m) =>
+    `<button class="tab ${m.id === sel.materia ? "on" : ""}" data-m="${m.id}">${esc(m.nome)}</button>`).join("") +
+    '<button class="tab add" id="novaMat">➕ Nova matéria</button>';
+  renderPainel();
+  scrollTo(0, y);
+}
+
+function renderPainel() {
+  const el = $("painel"), m = materias.find((x) => x.id === sel.materia);
+  if (!m) { el.innerHTML = '<div class="card">Crie sua primeira matéria na aba <b>➕ Nova matéria</b> acima.</div>'; return; }
+  const ls = listas.filter((l) => l.materia === m.id).sort(alfa); // ordem alfabética
+  if (!ls.some((l) => l.id === sel.lista)) sel.lista = null;
+  let h = `<div class="card"><div class="row-head"><h2>📖 ${esc(m.nome)}</h2>
+    <button data-dm="${m.id}">🗑️ Excluir matéria</button></div>
+    <p><label>📤 Enviar PDF(s): <input type="file" id="pdf" accept="application/pdf" multiple></label></p>
+    <div id="status" class="muted"></div></div>
+    <div class="card"><b>Materiais (${ls.length}) — ordem alfabética</b>` +
+    (ls.map((l) => {
+      const c = contar(l, l.questoes), tot = l.questoes.length, cor = c.acerto + c.erro;
+      return `<div class="pdfrow ${l.id === sel.lista ? "on" : ""}" data-l="${l.id}"><span class="nm">📄 ${esc(l.nome)}</span>
+        <span class="muted">${tot - c.branco}/${tot} resp. · ${cor ? Math.round((c.acerto / cor) * 100) + "%" : "—"}</span>
+        <button data-dl="${l.id}" title="Excluir PDF">🗑️</button></div>`;
+    }).join("") || '<p class="muted">Nenhum PDF ainda. Envie um acima.</p>') + "</div>";
+  const L = ls.find((l) => l.id === sel.lista);
+  el.innerHTML = h + (L ? renderLista(L) : "");
+}
+
+// ---------- Autenticação + sincronização em tempo real ----------
+$("entrar").onclick = () => signInWithPopup(auth, new GoogleAuthProvider()).catch((e) => alert("Erro no login: " + e.message));
+$("sair").onclick = () => signOut(auth);
+
+onAuthStateChanged(auth, (u) => {
+  unsubs.forEach((f) => f()); unsubs = [];
+  user = u; materias = []; listas = [];
+  $("login").hidden = !!u; $("app").hidden = !u; $("conta").hidden = !u;
+  $("usuario").textContent = u ? u.displayName || u.email : "";
+  if (!u) return;
+  unsubs.push(onSnapshot(col("materias"), (s) => {
+    materias = s.docs.map((d) => ({ id: d.id, ...d.data() })); render();
+  }, falha));
+  unsubs.push(onSnapshot(col("listas"), (s) => {
+    const n = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+    if (sig(n) === sig(listas)) return; // já refletido localmente: evita redesenhar/pular a tela
+    listas = n; render();
+  }, falha));
+});
+
+// ---------- Eventos ----------
+document.addEventListener("click", async (e) => {
+  const t = e.target, d = (k) => t.closest(`[data-${k}]`)?.dataset[k], L = listaAtual();
+  const upd = (obj) => updateDoc(ref("listas", L.id), obj).catch(falha);
+  if (d("dl")) {
+    if (confirm("Excluir esta lista?")) deleteDoc(ref("listas", d("dl"))).catch(falha);
+  } else if (d("l")) { sel.lista = d("l"); saveUi(); render(); }
+  else if (d("m")) { sel = { materia: d("m"), lista: null }; saveUi(); render(); }
+  else if (t.closest("#novaMat")) {
+    const nome = (prompt("Nome da nova matéria:") || "").trim();
+    if (!nome) return;
+    if (materias.some((m) => m.nome.toLowerCase() === nome.toLowerCase())) return alert("Essa matéria já existe.");
+    try { const r = await addDoc(col("materias"), { nome, criado: Date.now() }); sel = { materia: r.id, lista: null }; saveUi(); render(); }
+    catch (err) { falha(err); }
+  } else if (d("dm")) {
+    if (!confirm("Excluir esta matéria e todas as suas listas?")) return;
+    const b = writeBatch(fs);
+    listas.filter((l) => l.materia === d("dm")).forEach((l) => b.delete(ref("listas", l.id)));
+    b.delete(ref("materias", d("dm")));
+    b.commit().catch(falha);
+  } else if (d("f")) { filtro = d("f"); saveUi(); render(); }
+  else if (d("de")) { faixa = { de: +d("de"), ate: +t.closest("[data-de]").dataset.ate }; saveUi(); render(); }
+  else if (d("rq")) {
+    const n = d("rq"); delete L.respostas[n]; delete L.corrigidas[n];
+    upd({ [`respostas.${n}`]: deleteField(), [`corrigidas.${n}`]: deleteField() }); render();
+  } else if (t.id === "corrigir") { // corrige só as marcadas entre as exibidas
+    const o = {};
+    pendentesTela(L).forEach((q) => { L.corrigidas[q.num] = true; o[`corrigidas.${q.num}`] = true; });
+    upd(o); render();
+  } else if (t.id === "refazer") {
+    if (!confirm("Apagar todas as respostas desta lista?")) return;
+    L.respostas = {}; L.corrigidas = {}; upd({ respostas: {}, corrigidas: {} }); render();
+  }
+});
+
+document.addEventListener("change", async (e) => {
+  const t = e.target;
+  if (t.dataset.q) { // marcou alternativa: atualiza na tela e grava na nuvem
+    const L = listaAtual();
+    L.respostas[t.dataset.q] = t.value;
+    updateDoc(ref("listas", L.id), { [`respostas.${t.dataset.q}`]: t.value }).catch(falha);
+    $("rel").innerHTML = relatorio(L);
+    atualizarBotao(L);
+  } else if (t.id === "de" || t.id === "ate") {
+    faixa = { de: Math.max(1, +$("de").value || 1), ate: +$("ate").value || 9999 }; saveUi(); render();
+  } else if (t.id === "pdf") {
+    const st = $("status");
+    for (const f of t.files) {
+      st.textContent = `Processando ${f.name}...`;
+      try {
+        const { id, ...l } = await processarPDF(f);
+        if (JSON.stringify(l).length > 900000) throw new Error("PDF grande demais para um documento do Firestore (limite ~1 MB).");
+        const r = await addDoc(col("listas"), { ...l, materia: sel.materia, criado: Date.now() });
+        sel.lista = r.id; saveUi();
+      } catch (err) { console.error(err); alert(`Erro ao processar ${f.name}: ${err.message}`); }
+    }
+    render();
+  }
+});
+</script>
+</body>
+</html>
